@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Attendance System | EC6304 Group 30</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f1f5f9;
+      --surface:   #ffffff;
+      --border:    #e2e8f0;
+      --border-md: #cbd5e1;
+      --primary:   #1e40af;
+      --primary-lt:#eff6ff;
+      --primary-md:#bfdbfe;
+      --sky:       #0284c7;
+      --sky-lt:    #f0f9ff;
+      --green:     #16a34a;
+      --green-lt:  #f0fdf4;
+      --red:       #dc2626;
+      --red-lt:    #fef2f2;
+      --amber:     #d97706;
+      --amber-lt:  #fffbeb;
+      --text:      #0f172a;
+      --text-md:   #334155;
+      --text-sm:   #64748b;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+      --shadow-lg: 0 10px 30px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.05);
+      --radius:    10px;
+      --radius-lg: 14px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────────── */
+    .wrapper { max-width: 1320px; margin: 0 auto; padding: 0 24px 48px; }
+
+    /* ── Top Bar ─────────────────────────────────────────────────────── */
+    .topbar {
+      background: var(--primary);
+      padding: 0 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 52px;
+      position: sticky; top: 0; z-index: 50;
+      box-shadow: 0 2px 8px rgba(30,64,175,.3);
+    }
+    .topbar-brand {
+      display: flex; align-items: center; gap: 10px;
+      color: #fff; font-weight: 600; font-size: 15px; letter-spacing: .3px;
+    }
+    .topbar-brand svg { opacity: .9; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+    .badge-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    }
+    .badge-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+    .pill-arduino {
+      background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.2);
+    }
+    .pill-arduino.connected { background: rgba(22,163,74,.2); border-color: rgba(22,163,74,.4); }
+    .pill-arduino .dot { background: #fca5a5; }
+    .pill-arduino.connected .dot { background: #86efac; animation: blink 1.4s ease-in-out infinite; }
+
+    .pill-db {
+      background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.2);
+    }
+    .pill-db.online { background: rgba(2,132,199,.2); border-color: rgba(2,132,199,.4); }
+    .pill-db .dot { background: #fca5a5; }
+    .pill-db.online .dot { background: #7dd3fc; }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── Page Header ─────────────────────────────────────────────────── */
+    .page-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 28px 0 20px;
+    }
+    .page-header h2 {
+      font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -.3px;
+    }
+    .page-header p { color: var(--text-sm); font-size: 13px; margin-top: 2px; }
+
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+
+    /* ── Stat Cards ─────────────────────────────────────────────────── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      box-shadow: var(--shadow-sm);
+      position: relative; overflow: hidden;
+      transition: transform .25s ease, box-shadow .25s ease;
+      transform-style: preserve-3d;
+    }
+    .stat-card::after {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      border-radius: 3px 0 0 3px;
+    }
+    .stat-card:nth-child(1)::after { background: var(--primary); }
+    .stat-card:nth-child(2)::after { background: var(--sky); }
+    .stat-card:nth-child(3)::after { background: var(--green); }
+    .stat-card:nth-child(4)::after { background: var(--amber); }
+
+    .stat-card:hover {
+      transform: translateY(-3px) perspective(600px) rotateX(2deg);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .stat-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+    .stat-icon-wrap {
+      width: 38px; height: 38px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .stat-card:nth-child(1) .stat-icon-wrap { background: var(--primary-lt); color: var(--primary); }
+    .stat-card:nth-child(2) .stat-icon-wrap { background: var(--sky-lt);     color: var(--sky); }
+    .stat-card:nth-child(3) .stat-icon-wrap { background: var(--green-lt);   color: var(--green); }
+    .stat-card:nth-child(4) .stat-icon-wrap { background: var(--amber-lt);   color: var(--amber); }
+
+    .stat-value {
+      font-size: 28px; font-weight: 700; color: var(--text); letter-spacing: -.5px;
+      line-height: 1;
+    }
+    .stat-label { font-size: 12px; font-weight: 500; color: var(--text-sm); margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+
+    /* ── Grid ────────────────────────────────────────────────────────── */
+    .main-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
+
+    /* ── Card ────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: #fafafa;
+    }
+    .card-title {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--text-md);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .card-body { padding: 16px; }
+
+    /* ── Serial Monitor ──────────────────────────────────────────────── */
+    .serial-log {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      height: 164px; overflow-y: auto;
+      padding: 10px 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 11.5px; line-height: 1.9;
+      color: #94d28b;
+      scrollbar-width: thin; scrollbar-color: #334155 transparent;
+    }
+    .serial-log::-webkit-scrollbar { width: 4px; }
+    .serial-log::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+    .log-time { color: #60a5fa; margin-right: 6px; }
+    .log-data { color: #94d28b; }
+    .log-err  { color: #f87171; }
+
+    /* ── Buttons ─────────────────────────────────────────────────────── */
+    .btn-group { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .btn-row   { display: flex; gap: 8px; }
+
+    .btn {
+      flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 9px 14px; border: 1px solid transparent;
+      border-radius: var(--radius); cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+      letter-spacing: .2px; white-space: nowrap;
+      transition: all .18s ease;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn svg { flex-shrink: 0; }
+
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: #1e3a8a; border-color: #1e3a8a; box-shadow: 0 3px 10px rgba(30,64,175,.35); }
+
+    .btn-sky { background: var(--sky); color: #fff; border-color: var(--sky); }
+    .btn-sky:hover { background: #0369a1; box-shadow: 0 3px 10px rgba(2,132,199,.35); }
+
+    .btn-green { background: var(--green); color: #fff; border-color: var(--green); }
+    .btn-green:hover { background: #15803d; box-shadow: 0 3px 10px rgba(22,163,74,.35); }
+
+    .btn-red { background: var(--red); color: #fff; border-color: var(--red); }
+    .btn-red:hover { background: #b91c1c; box-shadow: 0 3px 10px rgba(220,38,38,.35); }
+
+    .btn-amber { background: var(--amber); color: #fff; border-color: var(--amber); }
+    .btn-amber:hover { background: #b45309; box-shadow: 0 3px 10px rgba(217,119,6,.35); }
+
+    .btn-outline {
+      background: #fff; color: var(--text-md);
+      border-color: var(--border-md);
+    }
+    .btn-outline:hover { background: var(--bg); border-color: var(--primary); color: var(--primary); }
+
+    /* ── Search ──────────────────────────────────────────────────────── */
+    .search-wrap {
+      position: relative; margin-bottom: 12px;
+    }
+    .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-sm); }
+    .search-input {
+      width: 100%; padding: 9px 12px 9px 34px;
+      background: #fff; border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text);
+      font-family: 'Inter', sans-serif; font-size: 13px;
+      outline: none; transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(30,64,175,.1); }
+    .search-input::placeholder { color: var(--text-sm); }
+
+    /* ── Table ───────────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+
+    thead th {
+      text-align: left; padding: 10px 14px;
+      font-size: 11px; font-weight: 600; letter-spacing: .6px;
+      text-transform: uppercase; color: var(--text-sm);
+      background: #fafafa;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .15s ease;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--primary-lt); }
+
+    tbody td { padding: 11px 14px; color: var(--text-md); vertical-align: middle; }
+
+    .td-id {
+      font-family: 'Courier New', monospace; font-size: 12px; font-weight: 700;
+      color: var(--primary); letter-spacing: .5px;
+    }
+    .td-time { font-family: 'Courier New', monospace; font-size: 12px; color: var(--sky); }
+    .td-num  { color: var(--text-sm); font-size: 12px; }
+
+    .tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; letter-spacing: .3px;
+    }
+    .tag-present { background: var(--green-lt); color: var(--green); border: 1px solid #bbf7d0; }
+    .tag .tag-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+    .icon-btn {
+      background: none; border: 1px solid transparent; cursor: pointer;
+      padding: 5px; border-radius: 6px; color: var(--text-sm);
+      transition: all .15s ease; display: inline-flex; align-items: center;
+    }
+    .icon-btn:hover { background: var(--red-lt); border-color: #fecaca; color: var(--red); }
+
+    /* ── Empty ───────────────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 52px 20px;
+      color: var(--text-sm);
+    }
+    .empty-state svg { margin-bottom: 12px; opacity: .35; }
+    .empty-state p { font-size: 13px; }
+
+    /* ── Modal ───────────────────────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(15,23,42,.45);
+      backdrop-filter: blur(3px);
+      display: none; align-items: center; justify-content: center;
+    }
+    .overlay.open { display: flex; animation: fadeIn .2s ease; }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+    .modal {
+      background: #fff; border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px; width: 420px; max-width: 95vw;
+      box-shadow: var(--shadow-lg);
+      animation: slideUp .22s cubic-bezier(.23,1,.32,1);
+    }
+    @keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:none} }
+
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 22px;
+    }
+    .modal-header h3 { font-size: 16px; font-weight: 700; color: var(--text); }
+    .modal-close {
+      background: none; border: none; cursor: pointer; padding: 4px;
+      border-radius: 6px; color: var(--text-sm);
+      display: inline-flex; transition: background .15s ease;
+    }
+    .modal-close:hover { background: var(--bg); }
+
+    .form-group { margin-bottom: 14px; }
+    .form-label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--text-md); margin-bottom: 6px; letter-spacing: .2px;
+    }
+    .form-input {
+      width: 100%; padding: 9px 12px;
+      background: #fff; border: 1px solid var(--border-md);
+      border-radius: var(--radius); color: var(--text);
+      font-family: 'Inter', sans-serif; font-size: 13px;
+      outline: none; transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(30,64,175,.1); }
+    .form-row { display: flex; gap: 12px; }
+    .form-row .form-group { flex: 1; }
+
+    .modal-footer { display: flex; gap: 8px; margin-top: 22px; }
+    .modal-footer .btn { flex: 1; }
+
+    /* ── Divider ─────────────────────────────────────────────────────── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+
+    /* ── Toast ───────────────────────────────────────────────────────── */
+    .toast-box { position: fixed; bottom: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-radius: var(--radius);
+      background: #fff; border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg); min-width: 250px; max-width: 320px;
+      font-size: 13px; font-weight: 500; color: var(--text-md);
+      animation: toastIn .25s cubic-bezier(.23,1,.32,1);
+    }
+    @keyframes toastIn  { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:none} }
+    @keyframes toastOut { to{opacity:0;transform:translateX(40px)} }
+    .toast.success { border-left: 3px solid var(--green); }
+    .toast.error   { border-left: 3px solid var(--red); }
+    .toast-icon { flex-shrink: 0; }
+    .toast.success .toast-icon { color: var(--green); }
+    .toast.error   .toast-icon { color: var(--red); }
+
+    /* ── Footer ──────────────────────────────────────────────────────── */
+    .page-footer {
+      text-align: center; padding: 24px 0 8px;
+      color: var(--text-sm); font-size: 12px; letter-spacing: .2px;
+    }
+    .page-footer strong { color: var(--text-md); font-weight: 600; }
+
+    /* ── Responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 960px) {
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+      .main-grid  { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 540px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .topbar { padding: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Toasts -->
+<div class="toast-box" id="toastBox"></div>
+
+<!-- Modal -->
+<div class="overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Attendance Record</h3>
+      <button class="modal-close" onclick="closeModal()" title="Close">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">User ID</label>
+      <input class="form-input" id="mUserId" type="text" placeholder="e.g. FP001" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Full Name <span style="color:var(--text-sm);font-weight:400">(optional)</span></label>
+      <input class="form-input" id="mName" type="text" placeholder="e.g. John Doe" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" id="mDate" type="text" placeholder="DD/MM/YYYY" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Time</label>
+        <input class="form-input" id="mTime" type="text" placeholder="HH:MM:SS" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="submitManual()">Save Record</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
+    </svg>
+    Fingerprint Attendance System
+  </div>
+  <div class="topbar-right">
+    <div class="badge-pill pill-db" id="dbPill">
+      <div class="dot"></div>
+      <span id="dbText">Connecting…</span>
+    </div>
+    <div class="badge-pill pill-arduino" id="arduinoPill">
+      <div class="dot"></div>
+      <span id="arduinoText">Arduino Offline</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrapper">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h2>Attendance Dashboard</h2>
+      <p>EC6304 Embedded Systems Design &mdash; Group 30, University of Ruhuna</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline" onclick="exportCSV()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Export CSV
+      </button>
+      <button class="btn btn-primary" onclick="openModal()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+        Add Record
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-top">
+        <div>
+          <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-label">Total Records</div>
+        </div>
+        <div class="stat-icon-wrap">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top">
+        <div>
+          <div class="stat-value" id="statUsers">0</div>
+          <div class="stat-label">Unique Users</div>
+        </div>
+        <div class="stat-icon-wrap">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top">
+        <div>
+          <div class="stat-value" id="statToday">0</div>
+          <div class="stat-label">Today&apos;s Scans</div>
+        </div>
+        <div class="stat-icon-wrap">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top">
+        <div>
+          <div class="stat-value" style="font-size:15px;padding-top:4px;letter-spacing:0" id="statLast">—</div>
+          <div class="stat-label">Last Scan</div>
+        </div>
+        <div class="stat-icon-wrap">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="main-grid">
+
+    <!-- Left Panel: Controls -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+            Arduino Connection
+          </div>
+        </div>
+        <div class="card-body">
+          <button class="btn btn-primary" id="connectBtn" onclick="toggleConnect()" style="width:100%;margin-bottom:8px">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12H3a9 9 0 0018 0h-2M12 3v9"/></svg>
+            Connect Arduino
+          </button>
+          <div class="btn-row">
+            <button class="btn btn-green" onclick="loadRecords()">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+              Refresh
+            </button>
+            <button class="btn btn-red" onclick="clearAll()">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+              Clear All
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="flex:1">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Serial Monitor
+          </div>
+          <button class="btn btn-outline" style="padding:4px 10px;font-size:11px" onclick="clearLog()">Clear</button>
+        </div>
+        <div class="card-body">
+          <div class="serial-log" id="serialLog">
+            <div><span class="log-time">[SYS]</span><span class="log-data"> Waiting for Arduino…</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Panel: Records -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Attendance Records
+        </div>
+        <span id="recordCount" style="font-size:11px;color:var(--text-sm);font-weight:500">0 records</span>
+      </div>
+      <div class="card-body">
+        <div class="search-wrap">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="search-input" id="searchInput" type="text" placeholder="Search by ID, name, date or time…" oninput="filterRecords()" />
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40px">#</th>
+                <th>User ID</th>
+                <th>Name</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Status</th>
+                <th style="width:40px"></th>
+              </tr>
+            </thead>
+            <tbody id="recordsBody">
+              <tr>
+                <td colspan="7">
+                  <div class="empty-state">
+                    <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    <p>No records found. Connect Arduino or add a record manually.</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="page-footer">
+    <strong>Fingerprint Attendance System</strong> &mdash; EC6304 Embedded Systems Design &mdash; Group 30, University of Ruhuna
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:3000/api';
+let records = [];
+let port = null;
+let reader = null;
+let serialBuffer = '';
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const icon = type === 'success'
+    ? `<svg class="toast-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`
+    : `<svg class="toast-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = icon + `<span>${msg}</span>`;
+  document.getElementById('toastBox').appendChild(el);
+  setTimeout(() => { el.style.animation = 'toastOut .25s ease forwards'; setTimeout(() => el.remove(), 250); }, 3500);
+}
+
+// ── DB Status ──────────────────────────────────────────────────────────────
+async function checkDB() {
+  try {
+    const r = await fetch(`${API}/stats`);
+    if (r.ok) {
+      const pill = document.getElementById('dbPill');
+      pill.classList.add('online');
+      document.getElementById('dbText').textContent = 'MongoDB Connected';
+    }
+  } catch {
+    document.getElementById('dbText').textContent = 'DB Offline';
+  }
+}
+
+// ── Load Records ───────────────────────────────────────────────────────────
+async function loadRecords() {
+  try {
+    const [rRec, rStat] = await Promise.all([
+      fetch(`${API}/attendance`),
+      fetch(`${API}/stats`)
+    ]);
+    const recData  = await rRec.json();
+    const statData = await rStat.json();
+
+    if (recData.success)  { records = recData.data; renderRecords(records); }
+    if (statData.success) {
+      const s = statData.data;
+      document.getElementById('statTotal').textContent = s.total;
+      document.getElementById('statUsers').textContent = s.uniqueUsers;
+      document.getElementById('statToday').textContent = s.todayCount;
+      document.getElementById('statLast').textContent  = s.lastScan;
+    }
+  } catch {
+    toast('Cannot reach server. Is it running?', 'error');
+  }
+}
+
+// ── Save ───────────────────────────────────────────────────────────────────
+async function saveRecord(record) {
+  try {
+    const r = await fetch(`${API}/attendance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record)
+    });
+    const data = await r.json();
+    if (data.success) { toast(`Record saved — ID: ${record.userId}`); loadRecords(); }
+    else toast('Save failed: ' + data.error, 'error');
+  } catch { toast('Server unreachable', 'error'); }
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────
+async function deleteRecord(id) {
+  if (!confirm('Delete this record?')) return;
+  try {
+    await fetch(`${API}/attendance/${id}`, { method: 'DELETE' });
+    toast('Record deleted');
+    loadRecords();
+  } catch { toast('Delete failed', 'error'); }
+}
+
+// ── Clear All ──────────────────────────────────────────────────────────────
+async function clearAll() {
+  if (!confirm('This will permanently delete all records from MongoDB. Continue?')) return;
+  try {
+    await fetch(`${API}/attendance`, { method: 'DELETE' });
+    toast('All records cleared');
+    loadRecords();
+  } catch { toast('Failed', 'error'); }
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function renderRecords(list) {
+  document.getElementById('recordCount').textContent = `${list.length} record${list.length !== 1 ? 's' : ''}`;
+  const body = document.getElementById('recordsBody');
+  if (!list.length) {
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">
+      <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      <p>No records found.</p></div></td></tr>`;
+    return;
+  }
+  body.innerHTML = list.map((rec, i) => `
+    <tr>
+      <td class="td-num">${i + 1}</td>
+      <td class="td-id">${rec.userId}</td>
+      <td style="font-weight:500">${rec.name || <span style="color:var(--text-sm)">—</span>}</td>
+      <td>${rec.date}</td>
+      <td class="td-time">${rec.time}</td>
+      <td><span class="tag tag-present"><span class="tag-dot"></span>${rec.status}</span></td>
+      <td>
+        <button class="icon-btn" title="Delete record" onclick="deleteRecord('${rec._id}')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </td>
+    </tr>`).join('');
+}
+
+// ── Filter ─────────────────────────────────────────────────────────────────
+function filterRecords() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  renderRecords(records.filter(r =>
+    r.userId.toLowerCase().includes(q) ||
+    (r.name || '').toLowerCase().includes(q) ||
+    r.date.includes(q) || r.time.includes(q)
+  ));
+}
+
+// ── Export CSV ─────────────────────────────────────────────────────────────
+function exportCSV() {
+  if (!records.length) { toast('No records to export', 'error'); return; }
+  const rows = [['User ID','Name','Date','Time','Status'],
+    ...records.map(r => [r.userId, r.name || '', r.date, r.time, r.status])];
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `attendance_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('CSV exported');
+}
+
+// ── Serial Log ─────────────────────────────────────────────────────────────
+function logLine(prefix, msg, cls = '') {
+  const log = document.getElementById('serialLog');
+  const d = document.createElement('div');
+  d.innerHTML = `<span class="log-time">[${prefix}]</span><span class="${cls || 'log-data'}"> ${msg}</span>`;
+  log.appendChild(d);
+  if (log.children.length > 120) log.removeChild(log.firstChild);
+  log.scrollTop = log.scrollHeight;
+}
+function clearLog() { document.getElementById('serialLog').innerHTML = ''; }
+
+// ── Arduino ────────────────────────────────────────────────────────────────
+async function toggleConnect() {
+  if (port) { await disconnectArduino(); return; }
+  if (!('serial' in navigator)) {
+    toast('Web Serial API not supported. Use Chrome or Edge.', 'error'); return;
+  }
+  try {
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 9600 });
+    setArduinoState(true);
+    logLine('SYS', 'Arduino connected at 9600 baud');
+    readSerial();
+  } catch (e) {
+    toast('Connection failed: ' + e.message, 'error');
+  }
+}
+
+async function disconnectArduino() {
+  try {
+    if (reader) { await reader.cancel(); reader = null; }
+    await port.close(); port = null;
+    setArduinoState(false);
+    logLine('SYS', 'Arduino disconnected', 'log-err');
+  } catch {}
+}
+
+function setArduinoState(on) {
+  const pill = document.getElementById('arduinoPill');
+  const text = document.getElementById('arduinoText');
+  const btn  = document.getElementById('connectBtn');
+  pill.classList.toggle('connected', on);
+  text.textContent = on ? 'Arduino Online' : 'Arduino Offline';
+  btn.innerHTML = on
+    ? `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Disconnect`
+    : `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12H3a9 9 0 0018 0h-2M12 3v9"/></svg> Connect Arduino`;
+  btn.className = on ? 'btn btn-red' : 'btn btn-primary';
+  btn.style.width = '100%';
+  btn.style.marginBottom = '8px';
+}
+
+async function readSerial() {
+  const decoder = new TextDecoderStream();
+  port.readable.pipeTo(decoder.writable);
+  reader = decoder.readable.getReader();
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      serialBuffer += value;
+      const lines = serialBuffer.split('\n');
+      serialBuffer = lines.pop();
+      lines.forEach(parseSerialLine);
+    }
+  } catch {}
+}
+
+function parseSerialLine(line) {
+  line = line.trim();
+  if (!line) return;
+  const now  = new Date();
+  const time = now.toTimeString().slice(0, 8);
+  logLine(time, line);
+
+  const idMatch   = line.match(/ID[:\s]+(\d+)/i);
+  const timeMatch = line.match(/Time[:\s]+([\d:]+)/i);
+  const dateMatch = line.match(/Date[:\s]+([\d\/]+)/i);
+
+  if (idMatch) {
+    saveRecord({
+      userId: `FP${String(idMatch[1]).padStart(3, '0')}`,
+      date:   dateMatch ? dateMatch[1] : now.toLocaleDateString('en-GB'),
+      time:   timeMatch ? timeMatch[1] : time,
+      status: 'Present'
+    });
+  }
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+function openModal() {
+  const now = new Date();
+  document.getElementById('mDate').value = now.toLocaleDateString('en-GB');
+  document.getElementById('mTime').value = now.toTimeString().slice(0, 8);
+  document.getElementById('mUserId').value = '';
+  document.getElementById('mName').value   = '';
+  document.getElementById('modal').classList.add('open');
+  setTimeout(() => document.getElementById('mUserId').focus(), 100);
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+async function submitManual() {
+  const userId = document.getElementById('mUserId').value.trim();
+  if (!userId) { toast('User ID is required', 'error'); document.getElementById('mUserId').focus(); return; }
+  await saveRecord({
+    userId,
+    name:   document.getElementById('mName').value.trim(),
+    date:   document.getElementById('mDate').value.trim(),
+    time:   document.getElementById('mTime').value.trim(),
+    status: 'Present'
+  });
+  closeModal();
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+checkDB();
+loadRecords();
+setInterval(checkDB, 15000);
+setInterval(loadRecords, 30000);
+</script>
+</body>
+</html>

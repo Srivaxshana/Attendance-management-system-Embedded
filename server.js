@@ -1,0 +1,94 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const path = require('path');
+
+const app = express();
+const PORT = 3000;
+const MONGO_URI = 'mongodb://localhost:27017/attendance_system';
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ── Schema ──────────────────────────────────────────────────────────────────
+const attendanceSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  name:   { type: String, default: '' },
+  date:   { type: String, required: true },
+  time:   { type: String, required: true },
+  status: { type: String, default: 'Present' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Attendance = mongoose.model('Attendance', attendanceSchema);
+
+// ── Routes ───────────────────────────────────────────────────────────────────
+app.get('/api/attendance', async (req, res) => {
+  try {
+    const records = await Attendance.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: records });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/attendance', async (req, res) => {
+  try {
+    const record = new Attendance(req.body);
+    await record.save();
+    res.status(201).json({ success: true, data: record });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/attendance/:id', async (req, res) => {
+  try {
+    await Attendance.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Record deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/attendance', async (req, res) => {
+  try {
+    await Attendance.deleteMany({});
+    res.json({ success: true, message: 'All records cleared' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/stats', async (req, res) => {
+  try {
+    const total = await Attendance.countDocuments();
+    const uniqueUsers = await Attendance.distinct('userId');
+    const today = new Date().toLocaleDateString('en-GB');
+    const todayCount = await Attendance.countDocuments({ date: today });
+    const last = await Attendance.findOne().sort({ createdAt: -1 });
+    res.json({
+      success: true,
+      data: {
+        total,
+        uniqueUsers: uniqueUsers.length,
+        todayCount,
+        lastScan: last ? `ID:${last.userId} ${last.time}` : 'None'
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+mongoose.connect(MONGO_URI)
+  .then(() => {
+    console.log('✅  MongoDB connected →', MONGO_URI);
+    app.listen(PORT, () => console.log(`🚀  Server running at http://localhost:${PORT}`));
+  })
+  .catch(err => {
+    console.error('❌  MongoDB connection failed:', err.message);
+    process.exit(1);
+  });
