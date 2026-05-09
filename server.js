@@ -4,26 +4,42 @@ const cors = require('cors');
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
-const MONGO_URI = 'mongodb://localhost:27017/attendance_system';
+const PORT = process.env.PORT || 3000;
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/attendance_system';
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── Schema ──────────────────────────────────────────────────────────────────
+// ── Schemas ──────────────────────────────────────────────────────────────────
+const userSchema = new mongoose.Schema({
+  userId:       { type: String, required: true, unique: true },
+  name:         { type: String, default: '' },
+  registeredAt: { type: Date, default: Date.now }
+});
+const User = mongoose.model('User', userSchema);
+
 const attendanceSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
-  name:   { type: String, default: '' },
-  date:   { type: String, required: true },
-  time:   { type: String, required: true },
-  status: { type: String, default: 'Present' },
+  userId:    { type: String, required: true },
+  name:      { type: String, default: '' },
+  date:      { type: String, required: true },
+  time:      { type: String, required: true },
+  status:    { type: String, default: 'Present' },
   createdAt: { type: Date, default: Date.now }
 });
-
 const Attendance = mongoose.model('Attendance', attendanceSchema);
 
-// ── Routes ───────────────────────────────────────────────────────────────────
+// ── Users ─────────────────────────────────────────────────────────────────────
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await User.find().sort({ registeredAt: 1 });
+    res.json({ success: true, data: users });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── Attendance ────────────────────────────────────────────────────────────────
 app.get('/api/attendance', async (req, res) => {
   try {
     const records = await Attendance.find().sort({ createdAt: -1 });
@@ -35,6 +51,12 @@ app.get('/api/attendance', async (req, res) => {
 
 app.post('/api/attendance', async (req, res) => {
   try {
+    // Auto-register user on first scan
+    await User.findOneAndUpdate(
+      { userId: req.body.userId },
+      { $setOnInsert: { userId: req.body.userId, name: req.body.name || '' } },
+      { upsert: true }
+    );
     const record = new Attendance(req.body);
     await record.save();
     res.status(201).json({ success: true, data: record });
@@ -61,18 +83,43 @@ app.delete('/api/attendance', async (req, res) => {
   }
 });
 
+// Daily attendance — all registered users + present/absent for a given date
+app.get('/api/attendance/daily', async (req, res) => {
+  try {
+    const date = req.query.date || new Date().toLocaleDateString('en-GB');
+    const [users, dayRecords] = await Promise.all([
+      User.find().sort({ registeredAt: 1 }),
+      Attendance.find({ date })
+    ]);
+    const presentMap = {};
+    dayRecords.forEach(r => { if (!presentMap[r.userId]) presentMap[r.userId] = r.time; });
+    const daily = users.map(u => ({
+      userId: u.userId,
+      name:   u.name,
+      status: presentMap[u.userId] ? 'Present' : 'Absent',
+      time:   presentMap[u.userId] || null
+    }));
+    res.json({ success: true, data: daily, date });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── Stats ──────────────────────────────────────────────────────────────────────
 app.get('/api/stats', async (req, res) => {
   try {
-    const total = await Attendance.countDocuments();
-    const uniqueUsers = await Attendance.distinct('userId');
     const today = new Date().toLocaleDateString('en-GB');
-    const todayCount = await Attendance.countDocuments({ date: today });
-    const last = await Attendance.findOne().sort({ createdAt: -1 });
+    const [total, registeredUsers, todayCount, last] = await Promise.all([
+      Attendance.countDocuments(),
+      User.countDocuments(),
+      Attendance.countDocuments({ date: today }),
+      Attendance.findOne().sort({ createdAt: -1 })
+    ]);
     res.json({
       success: true,
       data: {
         total,
-        uniqueUsers: uniqueUsers.length,
+        uniqueUsers: registeredUsers,
         todayCount,
         lastScan: last ? `ID:${last.userId} ${last.time}` : 'None'
       }
@@ -82,7 +129,7 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
-// ── Start ─────────────────────────────────────────────────────────────────────
+// ── Start ──────────────────────────────────────────────────────────────────────
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log('✅  MongoDB connected →', MONGO_URI);

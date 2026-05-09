@@ -109,8 +109,9 @@
       padding: 20px 22px;
       box-shadow: var(--shadow-sm);
       position: relative; overflow: hidden;
-      transition: transform .25s ease, box-shadow .25s ease;
+      transition: transform .12s ease, box-shadow .12s ease;
       transform-style: preserve-3d;
+      will-change: transform;
     }
     .stat-card::after {
       content: '';
@@ -123,7 +124,6 @@
     .stat-card:nth-child(4)::after { background: var(--amber); }
 
     .stat-card:hover {
-      transform: translateY(-3px) perspective(600px) rotateX(2deg);
       box-shadow: var(--shadow-lg);
     }
 
@@ -153,6 +153,8 @@
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-sm);
       overflow: hidden;
+      will-change: transform;
+      transition: transform .12s ease, box-shadow .12s ease;
     }
     .card-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -271,6 +273,7 @@
       font-size: 11px; font-weight: 600; letter-spacing: .3px;
     }
     .tag-present { background: var(--green-lt); color: var(--green); border: 1px solid #bbf7d0; }
+    .tag-absent  { background: var(--red-lt);   color: var(--red);   border: 1px solid #fecaca; }
     .tag .tag-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
     .icon-btn {
@@ -394,10 +397,6 @@
     <div class="form-group">
       <label class="form-label">User ID</label>
       <input class="form-input" id="mUserId" type="text" placeholder="e.g. FP001" />
-    </div>
-    <div class="form-group">
-      <label class="form-label">Full Name <span style="color:var(--text-sm);font-weight:400">(optional)</span></label>
-      <input class="form-input" id="mName" type="text" placeholder="e.g. John Doe" />
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -555,42 +554,73 @@
     <!-- Right Panel: Records -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-          Attendance Records
+        <div style="display:flex;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:2px">
+          <button id="tabRecords" onclick="switchTab('records')" style="padding:4px 12px;font-size:11px;font-weight:600;letter-spacing:.3px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;transition:all .15s">Records</button>
+          <button id="tabDaily"   onclick="switchTab('daily')"   style="padding:4px 12px;font-size:11px;font-weight:600;letter-spacing:.3px;background:transparent;color:var(--text-sm);border:none;border-radius:6px;cursor:pointer;transition:all .15s">Today's Report</button>
         </div>
         <span id="recordCount" style="font-size:11px;color:var(--text-sm);font-weight:500">0 records</span>
       </div>
       <div class="card-body">
-        <div class="search-wrap">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="search-input" id="searchInput" type="text" placeholder="Search by ID, name, date or time…" oninput="filterRecords()" />
+
+        <!-- Records View -->
+        <div id="recordsView">
+          <div class="search-wrap">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input class="search-input" id="searchInput" type="text" placeholder="Search by ID, name, date or time…" oninput="filterRecords()" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px">#</th>
+                  <th>User ID</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Status</th>
+                  <th style="width:40px"></th>
+                </tr>
+              </thead>
+              <tbody id="recordsBody">
+                <tr>
+                  <td colspan="6">
+                    <div class="empty-state">
+                      <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                      <p>No records found. Connect Arduino or add a record manually.</p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th style="width:40px">#</th>
-                <th>User ID</th>
-                <th>Name</th>
-                <th>Date</th>
-                <th>Time</th>
-                <th>Status</th>
-                <th style="width:40px"></th>
-              </tr>
-            </thead>
-            <tbody id="recordsBody">
-              <tr>
-                <td colspan="7">
-                  <div class="empty-state">
-                    <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                    <p>No records found. Connect Arduino or add a record manually.</p>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+
+        <!-- Daily Attendance View -->
+        <div id="dailyView" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span style="font-size:12px;color:var(--text-sm)" id="dailyDate"></span>
+            <button class="btn btn-outline" style="padding:4px 10px;font-size:11px" onclick="loadDailyAttendance()">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+              Refresh
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px">#</th>
+                  <th>User ID</th>
+                  <th>Name</th>
+                  <th>Time In</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="dailyBody">
+                <tr><td colspan="5"><div class="empty-state"><p>Loading…</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
+
       </div>
     </div>
 
@@ -607,6 +637,7 @@ let records = [];
 let port = null;
 let reader = null;
 let serialBuffer = '';
+let serialPendingId = null;
 
 // ── Toast ──────────────────────────────────────────────────────────────────
 function toast(msg, type = 'success') {
@@ -696,7 +727,7 @@ function renderRecords(list) {
   document.getElementById('recordCount').textContent = `${list.length} record${list.length !== 1 ? 's' : ''}`;
   const body = document.getElementById('recordsBody');
   if (!list.length) {
-    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">
+    body.innerHTML = `<tr><td colspan="6"><div class="empty-state">
       <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
       <p>No records found.</p></div></td></tr>`;
     return;
@@ -705,7 +736,6 @@ function renderRecords(list) {
     <tr>
       <td class="td-num">${i + 1}</td>
       <td class="td-id">${rec.userId}</td>
-      <td style="font-weight:500">${rec.name || <span style="color:var(--text-sm)">—</span>}</td>
       <td>${rec.date}</td>
       <td class="td-time">${rec.time}</td>
       <td><span class="tag tag-present"><span class="tag-dot"></span>${rec.status}</span></td>
@@ -814,17 +844,23 @@ function parseSerialLine(line) {
   const time = now.toTimeString().slice(0, 8);
   logLine(time, line);
 
-  const idMatch   = line.match(/ID[:\s]+(\d+)/i);
-  const timeMatch = line.match(/Time[:\s]+([\d:]+)/i);
-  const dateMatch = line.match(/Date[:\s]+([\d\/]+)/i);
+  // Arduino outputs "Attendance: ID #1" or "Found ID #1" — capture ID
+  if (/Attendance:|Found ID/i.test(line)) {
+    const m = line.match(/ID\s*#?(\d+)/i);
+    if (m) serialPendingId = m[1];
+  }
 
-  if (idMatch) {
+  // Next line has "Time: HH:MM:SS Date: DD/MM/YYYY" — save the record
+  if (/Time:/i.test(line) && serialPendingId !== null) {
+    const timeMatch = line.match(/Time[:\s]+([\d:]+)/i);
+    const dateMatch = line.match(/Date[:\s]+([\d\/]+)/i);
     saveRecord({
-      userId: `FP${String(idMatch[1]).padStart(3, '0')}`,
+      userId: `FP${String(serialPendingId).padStart(3, '0')}`,
       date:   dateMatch ? dateMatch[1] : now.toLocaleDateString('en-GB'),
       time:   timeMatch ? timeMatch[1] : time,
       status: 'Present'
     });
+    serialPendingId = null;
   }
 }
 
@@ -855,11 +891,86 @@ async function submitManual() {
   closeModal();
 }
 
+// ── Tabs ───────────────────────────────────────────────────────────────────
+let currentTab = 'records';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('recordsView').style.display = tab === 'records' ? '' : 'none';
+  document.getElementById('dailyView').style.display   = tab === 'daily'   ? '' : 'none';
+  const tR = document.getElementById('tabRecords');
+  const tD = document.getElementById('tabDaily');
+  tR.style.background = tab === 'records' ? 'var(--primary)' : 'transparent';
+  tR.style.color      = tab === 'records' ? '#fff' : 'var(--text-sm)';
+  tD.style.background = tab === 'daily'   ? 'var(--primary)' : 'transparent';
+  tD.style.color      = tab === 'daily'   ? '#fff' : 'var(--text-sm)';
+  if (tab === 'daily') loadDailyAttendance();
+  else {
+    const len = records.length;
+    document.getElementById('recordCount').textContent = `${len} record${len !== 1 ? 's' : ''}`;
+  }
+}
+
+// ── Daily Attendance ───────────────────────────────────────────────────────
+async function loadDailyAttendance() {
+  try {
+    const r    = await fetch(`${API}/attendance/daily`);
+    const data = await r.json();
+    if (!data.success) return;
+    document.getElementById('dailyDate').textContent = `Date: ${data.date}`;
+    const body = document.getElementById('dailyBody');
+    if (!data.data.length) {
+      body.innerHTML = `<tr><td colspan="5"><div class="empty-state">
+        <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <p>No registered users yet. Users are registered automatically on first scan.</p>
+        </div></td></tr>`;
+      document.getElementById('recordCount').textContent = '0 registered';
+      return;
+    }
+    const present = data.data.filter(u => u.status === 'Present').length;
+    document.getElementById('recordCount').textContent = `${present}/${data.data.length} present`;
+    body.innerHTML = data.data.map((u, i) => `
+      <tr>
+        <td class="td-num">${i + 1}</td>
+        <td class="td-id">${u.userId}</td>
+        <td style="font-weight:500">${u.name || `<span style="color:var(--text-sm)">—</span>`}</td>
+        <td class="td-time">${u.time || `<span style="color:var(--text-sm)">—</span>`}</td>
+        <td><span class="tag tag-${u.status === 'Present' ? 'present' : 'absent'}">
+          <span class="tag-dot"></span>${u.status}
+        </span></td>
+      </tr>`).join('');
+  } catch {
+    toast('Failed to load daily attendance', 'error');
+  }
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────
 checkDB();
 loadRecords();
 setInterval(checkDB, 15000);
 setInterval(loadRecords, 30000);
+
+// ── 3D Tilt ────────────────────────────────────────────────────────────────
+function apply3DTilt(el, maxDeg, liftZ) {
+  el.addEventListener('mouseenter', () => {
+    el.style.transition = 'transform .1s ease, box-shadow .1s ease';
+  });
+  el.addEventListener('mousemove', e => {
+    const r  = el.getBoundingClientRect();
+    const x  = e.clientX - r.left;
+    const y  = e.clientY - r.top;
+    const rx = ((y - r.height / 2) / (r.height / 2)) * -maxDeg;
+    const ry = ((x - r.width  / 2) / (r.width  / 2)) *  maxDeg;
+    el.style.transform = `perspective(800px) rotateX(${rx}deg) rotateY(${ry}deg) translateZ(${liftZ}px)`;
+  });
+  el.addEventListener('mouseleave', () => {
+    el.style.transition = 'transform .4s ease, box-shadow .4s ease';
+    el.style.transform  = '';
+  });
+}
+
+document.querySelectorAll('.stat-card').forEach(c => apply3DTilt(c, 10, 10));
+document.querySelectorAll('.card').forEach(c => apply3DTilt(c, 4, 4));
 </script>
 </body>
 </html>
